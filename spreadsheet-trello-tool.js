@@ -149,6 +149,58 @@ function populateBoardSheet(boardID,boardName,cards,lists,actions,members) {
   }
 }
 
+function getHeadingKey(heading) {
+  return heading.toLowerCase().replace(/ /g,'').trim();
+}
+
+function parseCardName(usingScrum,name) {
+
+  var nap = {name:"",points:"",cost:"",consumedPoints:""};
+
+  if (usingScrum == true) {
+    nap.name = name;
+    if (name.charAt(0) == "(" && name.indexOf(")") != -1) {
+       nap.points = name.substr(1,name.indexOf(")")-1);
+       nap.name = name.substr(name.indexOf(")")+1);
+    }
+
+    if (nap.name.indexOf("[") != -1 && nap.name.indexOf("]") != -1 && (nap.name.indexOf("[") < nap.name.indexOf("]")-1)) {
+
+      nap.consumedPoints = nap.name.substring(nap.name.indexOf("[")+1, nap.name.indexOf("]"));
+
+      nap.name = nap.name.substring(0,nap.name.indexOf("[")) + nap.name.substr(nap.name.indexOf("]")+1);
+    }
+
+    nap.cost = getCostFromName(nap.name);
+    nap.name = getNameWithoutCost(nap.name);
+
+  } else {
+    nap.name = name;
+  }
+
+  return nap;
+}
+
+function getNameWithoutCost(name) {
+  var nameWithoutCost = name.trim();
+
+  if (name.length > 0 && name.substr(name.length-1) == ")" && name.indexOf("(Cost: ") != -1) {
+    nameWithoutCost = name.substr(0,name.indexOf("(Cost: ")).trim();
+  }
+
+  return nameWithoutCost;
+}
+
+function getCostFromName(name) {
+  var cost ="";
+
+  if (name.length > 0 && name.substr(name.length-1) == ")" && name.indexOf("(Cost: ") != -1) {
+    cost = name.substring(name.indexOf("(Cost: ")+7,name.length-1)+"";
+  }
+
+  return cost;
+}
+
 function createBoardBackupSheet(boardName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
