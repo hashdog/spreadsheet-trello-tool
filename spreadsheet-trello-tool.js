@@ -95,7 +95,7 @@ function populateBoardSheet(boardID,boardName,cards,lists,actions,members) {
         dueDate = card.due;
       }
 
-      nap = parseCardName(isScrum,card.name);
+      nap = parseCardName(card.name);
       card = parseCardChecklists(card,headings);
       comments = parseActionComments(card,actions,actionCardIds);
       var list = parseCardList(card,lists,listIds);
@@ -105,7 +105,7 @@ function populateBoardSheet(boardID,boardName,cards,lists,actions,members) {
         cardStatus = "closed";
       }
 
-      if (!openOnly || (cardStatus == "open" && list.status == "open")) {
+      if (cardStatus == "open" && list.status == "open") {
         Logger.log("Card %s has status %s", card.idShort,cardStatus);
 
         card.duedate = dueDate;
@@ -130,11 +130,9 @@ function populateBoardSheet(boardID,boardName,cards,lists,actions,members) {
         // This must be done last
         card.id = card.idShort;
 
-        if (canProcessList(card.list, listFilter) && canProcessCard(card,columnFilter,headings)) {
-          row++;
-          var rowData = getDataForRow(card,headings);
-          allRows.push(rowData[0]);
-        }
+        row++;
+        var rowData = getDataForRow(card,headings);
+        allRows.push(rowData[0]);
       }
     }
 
@@ -149,36 +147,165 @@ function populateBoardSheet(boardID,boardName,cards,lists,actions,members) {
   }
 }
 
+function getDataForRow(card,headings) {
+  var rowData = [];
+
+  for (var i = 0;i < headings.length;i++) {
+    if (card.hasOwnProperty(headings[i].toLowerCase())) {
+      rowData.push(card[headings[i].toLowerCase()]);
+    }
+    else {
+      rowData.push("");
+    }
+  }
+
+  return [rowData];
+}
+
 function getHeadingKey(heading) {
   return heading.toLowerCase().replace(/ /g,'').trim();
 }
 
-function parseCardName(usingScrum,name) {
+function parseMembers(card, members) {
+  var mbr = ""
 
-  var nap = {name:"",points:"",cost:"",consumedPoints:""};
-
-  if (usingScrum == true) {
-    nap.name = name;
-    if (name.charAt(0) == "(" && name.indexOf(")") != -1) {
-       nap.points = name.substr(1,name.indexOf(")")-1);
-       nap.name = name.substr(name.indexOf(")")+1);
+  for (var a=0;card.idMembers && a<card.idMembers.length; a++) {
+    if (a>0) {mbr=mbr+"\n";}
+    for (var b=0;b<members.length;b++) {
+      if (members[b].id == card.idMembers[a]) {
+        mbr = mbr + members[b].fullName;
+        break;
+      }
     }
 
-    if (nap.name.indexOf("[") != -1 && nap.name.indexOf("]") != -1 && (nap.name.indexOf("[") < nap.name.indexOf("]")-1)) {
-
-      nap.consumedPoints = nap.name.substring(nap.name.indexOf("[")+1, nap.name.indexOf("]"));
-
-      nap.name = nap.name.substring(0,nap.name.indexOf("[")) + nap.name.substr(nap.name.indexOf("]")+1);
-    }
-
-    nap.cost = getCostFromName(nap.name);
-    nap.name = getNameWithoutCost(nap.name);
-
-  } else {
-    nap.name = name;
   }
 
+  return mbr;
+}
+
+function parseLabels(labels) {
+  var lb = ""
+  for (var l =0;l<labels.length; l++) {
+    if (l>0) {lb=lb+"\n";}
+    if (labels[l].name.length <= 0) {
+      lb = lb + labels[l].color;
+    }
+    else {
+      lb = lb + labels[l].name;
+    }
+  }
+
+  return lb;
+}
+
+function parseAttachments(attachments) {
+  var at = ""
+
+  for (var a =0;a<attachments.length; a++) {
+    if (a>0) {at=at+"\n";}
+    at = at + attachments[a].url;
+  }
+
+  return at;
+}
+
+function parseCardName(name) {
+  var nap = {name:"",points:"",cost:"",consumedPoints:""};
+
+  nap.name = name;
+  if (name.charAt(0) == "(" && name.indexOf(")") != -1) {
+     nap.points = name.substr(1,name.indexOf(")")-1);
+     nap.name = name.substr(name.indexOf(")")+1);
+  }
+
+  if (nap.name.indexOf("[") != -1 && nap.name.indexOf("]") != -1 && (nap.name.indexOf("[") < nap.name.indexOf("]")-1)) {
+
+    nap.consumedPoints = nap.name.substring(nap.name.indexOf("[")+1, nap.name.indexOf("]"));
+
+    nap.name = nap.name.substring(0,nap.name.indexOf("[")) + nap.name.substr(nap.name.indexOf("]")+1);
+  }
+
+  nap.cost = getCostFromName(nap.name);
+  nap.name = getNameWithoutCost(nap.name);
+
   return nap;
+}
+
+function parseCardList(card,lists,listIds) {
+  var x = listIds.indexOf(card.idList)
+  var list = {name:"",status:""};
+  list.name = lists[x].name;
+  if (lists[x].closed) { list.status = "closed";} else {list.status = "open"};
+
+  return list;
+}
+
+function parseCardChecklists(card,headings) {
+  var newCard = card;
+  newCard.other = "";
+
+  for (var k=0;k < card.checklists.length; k++) {
+    var cl = card.checklists[k];
+
+    for (var j=0; cl.checkItems && j < cl.checkItems.length; j++) {
+
+      var cli = cl.checkItems[j];
+
+      if (cli.state == "incomplete") {
+
+        var checkListItemState = getCheckListItemState(cli.state);
+
+        var name = getHeadingKey(cl.name);
+
+        if (headings.indexOf(name) >= 0) {
+          if (!newCard.hasOwnProperty(name)) {
+            newCard[name] ="";
+          }
+          newCard[name] += checkListItemState + cli.name + "\n\n";
+        }
+        else {
+          if (j==0) {
+            newCard.other += "**********\n" + cl.name + "\n**********\n"
+          }
+          newCard.other += checkListItemState + cli.name + "\n\n";
+        }
+      }
+    }
+  }
+
+  return newCard;
+}
+
+function getCheckListItemState(state) {
+  if (state != "incomplete") {
+    return "\u2611 ";
+  } else {
+    return "\u2610 ";
+  }
+ }
+
+function parseActionComments(card,actions,actionCardIds) {
+  var comments = "";
+
+  var i= actionCardIds.indexOf(card.id);
+  while (i!=-1) {
+
+    if (comments!="") {comments = comments + "\n\n";}
+    var name = "** Member Name Unavailable **";
+    if (actions[i].memberCreator && actions[i].memberCreator.fullName) {
+      name = actions[i].memberCreator.fullName;
+    }
+    comments = comments + name + ":\n----------\n" + actions[i].data.text + "\n----------";
+
+    if (i==actionCardIds.length-1) {
+      i= -1;
+    }
+    else {
+      i= actionCardIds.indexOf(card.id,i+1);
+    }
+  }
+
+  return comments;
 }
 
 function getNameWithoutCost(name) {
