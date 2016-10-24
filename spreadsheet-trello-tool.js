@@ -9,9 +9,13 @@ var boardName = "";
 var boardId = "";
 
 function onOpen(){
-  var ss = SpreadsheetApp.getActive();
-  var menuEntries = [{name: "Dump Board", functionName: "dumpBoard"}];
-  ss.addMenu("Trello", menuEntries);
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('Trello')
+    .addItem('Dump Board', 'dumpBoard')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('Configuration')
+      .addItem('Create Config Sheet', 'createConfigSheet'))
+    .addToUi();
 }
 
 function dumpBoard() {
@@ -185,4 +189,55 @@ function createBoardBackupSheet(boardName) {
 
   newSheet.setFrozenRows(1);
   return newSheet;
+}
+
+function createConfigSheet() {
+  var ss = SpreadsheetApp.getActive();
+  var configSheet = ss.getSheetByName("Config");
+  if(configSheet == null) {
+    fillConfigSheet();
+  }else{
+    Browser.msgBox("Ya existe la hoja");
+  }
+}
+
+function fillConfigSheet() {
+  var ss = SpreadsheetApp.getActive();
+  var sheet = ss.insertSheet("Config");
+  sheet.getRange("A1").setValue("board name");
+  sheet.getRange("A2").setValue("board id");
+  sheet.getRange("A3").setValue("app token");
+  sheet.getRange("A4").setValue("app key");
+
+  sheet.getRange("A7").setValue("get trello app key and token");
+  sheet.getRange("A10").setValue("available columns");
+    sheet.getRange("B10").setValue("Id");
+    sheet.getRange("C10").setValue("Title");
+    sheet.getRange("D10").setValue("Story Points");
+    sheet.getRange("E10").setValue("Cost");
+    sheet.getRange("F10").setValue("Consumed Points");
+    sheet.getRange("G10").setValue("User Story");
+    sheet.getRange("H10").setValue("Acceptance Criteria");
+    sheet.getRange("I10").setValue("Card Status");
+    sheet.getRange("J10").setValue("List");
+    sheet.getRange("K10").setValue("List Status");
+    sheet.getRange("L10").setValue("Checklists");
+    sheet.getRange("M10").setValue("Labels");
+    sheet.getRange("N10").setValue("Attachments");
+    sheet.getRange("O10").setValue("Actions");
+    sheet.getRange("P10").setValue("Members");
+    sheet.getRange("Q10").setValue("URL");
+    sheet.getRange("R10").setValue("Due Date");
+    sheet.getRange("S10").setValue("Questions");
+    sheet.getRange("T10").setValue("Created");
+  sheet.getRange("A11").setValue("selected columns * copy and paste the columns");
+
+  // Assign background color
+  var cells = ["A1:A4","A7","A10","A11"]
+  var i=0,
+      arryLngth = cells.length;
+  for (i=0; i < arryLngth; i+=1) {
+    sheet.getRange(cells[i]).setBackground("#CCCCCC");
+  };
+  sheet.getRange("B10:T10").setBackground("#CCCCCC");
 }
