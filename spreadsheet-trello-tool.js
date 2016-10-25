@@ -23,12 +23,16 @@ function dumpBoard() {
   var ss = SpreadsheetApp.getActive().getSheetByName("Config");
   var values = ss.getRange("B1:B4").getValues();
 
-  boardName = values[0];
-  boardId = values[1];
+  token  = values[3];
   appKey = values[2];
-  token = values[3];
+  boardName = values[0];
+  boardId   = getBoardID(values[1]);
 
-  backup(boardName,boardId);
+  if (boardId != null) {
+    backup(boardName,boardId);
+  } else {
+    Browser.msgBox("The board doesn't exist or you don't have permissions to see this one!");
+  }
 }
 
 function backup(boardName,boardId) {
@@ -376,7 +380,7 @@ function createConfigSheet() {
   if(configSheet == null) {
     fillConfigSheet();
   }else{
-    Browser.msgBox("Ya existe la hoja");
+    Browser.msgBox("The configuration sheet already exists!");
   }
 }
 
@@ -384,11 +388,12 @@ function fillConfigSheet() {
   var ss = SpreadsheetApp.getActive();
   var sheet = ss.insertSheet("Config");
   sheet.getRange("A1").setValue("board name");
-  sheet.getRange("A2").setValue("board id");
-  sheet.getRange("A3").setValue("app token");
-  sheet.getRange("A4").setValue("app key");
+  sheet.getRange("A2").setValue("board url");
+  sheet.getRange("A3").setValue("app key");
+  sheet.getRange("A4").setValue("app token");
 
   sheet.getRange("A7").setValue("get trello app key and token");
+    sheet.getRange("B7").setValue("https://trello.com/1/appKey/generate");
   sheet.getRange("A10").setValue("available columns");
     sheet.getRange("B10").setValue("Id");
     sheet.getRange("C10").setValue("Title");
@@ -419,4 +424,19 @@ function fillConfigSheet() {
     sheet.getRange(cells[i]).setBackground("#CCCCCC");
   };
   sheet.getRange("B10:T10").setBackground("#CCCCCC");
+}
+
+function getBoardID(boardUrl) {
+  var url = constructTrelloURL("members/me/boards/");
+  var boards = UrlFetchApp.fetch(url, {"method": "get"}).getContentText();
+  var i=0,
+      arryLngth = JSON.parse(boards).length,
+      boardId = null;
+
+  for (i=0; i < arryLngth; i+=1) {
+    if(JSON.parse(boards)[i].url == boardUrl){
+      boardId = JSON.parse(boards)[i].id;
+    }
+  }
+  return boardId;
 }
